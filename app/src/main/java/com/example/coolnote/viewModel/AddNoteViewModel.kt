@@ -13,6 +13,8 @@ import javax.inject.Inject
 class AddNoteViewModel @Inject constructor(private val databaseRepository: DatabaseRepository) :
     ViewModel() {
 
+    var noteData = NoteModel()
+
     fun addNote(noteModel: NoteModel) {
         viewModelScope.launch(Dispatchers.IO) {
             databaseRepository.addNote(noteModel)

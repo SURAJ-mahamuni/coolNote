@@ -1,6 +1,7 @@
 package com.example.coolnote.fragment
 
 import android.os.Bundle
+import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.Menu
@@ -12,35 +13,53 @@ import android.widget.Toast
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
+import androidx.navigation.fragment.navArgs
+import androidx.viewbinding.ViewBinding
 import com.example.coolnote.R
 import com.example.coolnote.activity.MainActivity
 import com.example.coolnote.databinding.FragmentAddNoteBinding
 import com.example.coolnote.model.NoteModel
+import com.example.coolnote.utils.JsonConvertor
+import com.example.coolnote.utils.toastMsg
 import com.example.coolnote.viewModel.AddNoteViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class AddNoteFragment : Fragment(), MenuProvider {
-    private var _binding: FragmentAddNoteBinding? = null
-    private val binding get() = _binding!!
-    val addNoteViewModel by viewModels<AddNoteViewModel>()
+class AddNoteFragment : BindingFragment<FragmentAddNoteBinding>(), MenuProvider {
+
+    private val addNoteViewModel by viewModels<AddNoteViewModel>()
+
+    private val args by navArgs<AddNoteFragmentArgs>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        val data = JsonConvertor.jsonToObject<NoteModel>(args.noteData ?: "")
+        Log.e("data", args.noteData ?: "")
+        data?.let {
+            addNoteViewModel.noteData = it
+        }
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        _binding = FragmentAddNoteBinding.inflate(inflater, container, false)
-        return binding.root
-    }
+    override val backPressedHandler: () -> Unit
+        get() = {}
+    override val onDestroyViewHandler: () -> Unit
+        get() = {}
+    override val onCreateViewHandler: () -> Unit
+        get() = {
+            binding.viewModel = addNoteViewModel
+            binding.lifecycleOwner = this
+        }
+    override val bindingInflater: (LayoutInflater) -> ViewBinding
+        get() = FragmentAddNoteBinding::inflate
+
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
         setActionBar()
+
         activity?.addMenuProvider(this)
+
         initializeListener()
 
     }
@@ -53,6 +72,7 @@ class AddNoteFragment : Fragment(), MenuProvider {
 
     private fun setActionBar() {
         (requireActivity() as MainActivity).setSupportActionBar(binding.addNoteToolbar)
+        binding.addNoteToolbar.title = ""
     }
 
     override fun onStop() {
@@ -77,18 +97,18 @@ class AddNoteFragment : Fragment(), MenuProvider {
     }
 
     private fun addNoteAndGoHome() {
-        val title = binding.noteTitle.text.toString()
-        val note = binding.note.text.toString()
-        if (title.isNotBlank() && note.isNotBlank()) {
+        val title = addNoteViewModel.noteData.noteTitle ?: ""
+        val note = addNoteViewModel.noteData.noteInfo ?: ""
+        if (title.isNotEmpty() && note.isNotEmpty()) {
             addNoteViewModel.addNote(
                 NoteModel(
-                    null,
-                    binding.noteTitle.text.toString(),
-                    binding.note.text.toString()
+                    addNoteViewModel.noteData.noteId,
+                    title,
+                    note
                 )
             )
             findNavController().popBackStack()
-            Toast.makeText(requireContext(), "Note Added!", Toast.LENGTH_SHORT).show()
+            toastMsg("Note Added!")
         }
     }
 }

@@ -1,44 +1,65 @@
 package com.example.coolnote.fragment
 
 import android.os.Bundle
-import android.util.Log
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
+import androidx.viewbinding.ViewBinding
 import com.example.coolnote.viewModel.HomeViewModel
 import com.example.coolnote.R
-import com.example.coolnote.adapters.NotesAdapter
+import com.example.coolnote.adapters.GenericAdapter
 import com.example.coolnote.databinding.FragmentHomeBinding
+import com.example.coolnote.databinding.NoteItemBinding
 import com.example.coolnote.model.NoteModel
+import com.example.coolnote.utils.JsonConvertor
+import com.example.coolnote.utils.setupUI
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class HomeFragment : Fragment() {
-    private var _binding: FragmentHomeBinding? = null
-    private val binding get() = _binding!!
-    val homeViewModel by viewModels<HomeViewModel>()
-    private val adapter = NotesAdapter()
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+class HomeFragment : BindingFragment<FragmentHomeBinding>() {
 
-    }
+    private val homeViewModel by viewModels<HomeViewModel>()
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View? {
-        _binding = FragmentHomeBinding.inflate(inflater, container, false)
-        return binding.root
-    }
+    private var _adapter: GenericAdapter<NoteModel, NoteItemBinding>? = null
+    private val adapter get() = _adapter!!
+
+    override val backPressedHandler: () -> Unit
+        get() = {}
+    override val onDestroyViewHandler: () -> Unit
+        get() = {}
+    override val onCreateViewHandler: () -> Unit
+        get() = {}
+    override val bindingInflater: (LayoutInflater) -> ViewBinding
+        get() = FragmentHomeBinding::inflate
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        setupUI(view){}
+
         initializeAdapter()
+
+        observables()
+
         initializeListener()
+
+    }
+
+    private fun observables() {
+        homeViewModel.getAllNote().observe(viewLifecycleOwner) {
+            if (it.isNullOrEmpty()) {
+                binding.lottieAnimation.visibility = View.VISIBLE
+                binding.noteRv.visibility = View.GONE
+                binding.addNoteMsg.visibility = View.VISIBLE
+            } else {
+                binding.lottieAnimation.visibility = View.GONE
+                binding.noteRv.visibility = View.VISIBLE
+                binding.addNoteMsg.visibility = View.GONE
+                adapter.setData(it as ArrayList<NoteModel>)
+            }
+        }
     }
 
     private fun initializeListener() {
@@ -72,8 +93,8 @@ class HomeFragment : Fragment() {
             homeViewModel.getNotes(searchQuery).observe(viewLifecycleOwner) {
                 if (it.isNotEmpty()) {
                     adapter.setData(it as ArrayList<NoteModel>)
-                }
-                else{
+                } else {
+                    adapter.setData(ArrayList())
                     binding.lottieAnimation.visibility = View.VISIBLE
                 }
             }
@@ -85,21 +106,25 @@ class HomeFragment : Fragment() {
     }
 
     private fun initializeAdapter() {
-
-        homeViewModel.getAllNote().observe(viewLifecycleOwner) {
-            Log.e("homeTag", it.toString())
-            if (it.isNullOrEmpty()) {
-                binding.lottieAnimation.visibility = View.VISIBLE
-                binding.noteRv.visibility = View.GONE
-                binding.addNoteMsg.visibility = View.VISIBLE
-            } else {
-                binding.lottieAnimation.visibility = View.GONE
-                binding.noteRv.visibility = View.VISIBLE
-                binding.addNoteMsg.visibility = View.GONE
-                adapter.setData(it as ArrayList<NoteModel>)
-            }
-        }
+        _adapter = GenericAdapter(
+            NoteItemBinding::inflate,
+            onBind = { itemData, itemBinding, position, listSize ->
+                itemBinding.apply {
+                    noteTitle.text = itemData.noteTitle
+                    noteInfo.text = itemData.noteInfo
+                    container.setOnClickListener {
+                        findNavController().navigate(
+                            HomeFragmentDirections.actionHomeFragmentToAddNoteFragment(
+                                JsonConvertor.toJason(
+                                    itemData
+                                )
+                            )
+                        )
+                    }
+                }
+            })
         binding.noteRv.adapter = adapter
     }
+
 
 }

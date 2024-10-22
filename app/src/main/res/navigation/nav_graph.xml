@@ -18,5 +18,11 @@
         android:id="@+id/addNoteFragment"
         android:name="com.example.coolnote.fragment.AddNoteFragment"
         android:label="fragment_add_note"
-        tools:layout="@layout/fragment_add_note" />
+        tools:layout="@layout/fragment_add_note" >
+        <argument
+            android:name="noteData"
+            app:argType="string"
+            app:nullable="true"
+            android:defaultValue="" />
+    </fragment>
 </navigation>
